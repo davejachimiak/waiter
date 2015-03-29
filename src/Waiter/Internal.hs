@@ -12,7 +12,7 @@ import System.Posix.Signals (signalProcess, killProcess)
 import System.Posix.Process (getProcessStatus)
 import System.Posix.Types (CPid)
 import System.Environment (getArgs)
-import Control.Monad (forever)
+import Control.Monad (forever, when)
 import Control.Concurrent.MVar (takeMVar)
 import Text.Regex (mkRegex, matchRegex)
 
@@ -44,12 +44,10 @@ stopServer :: IO ()
 stopServer = do
     pidFileDoesExist <- fileExist pidFile
 
-    case pidFileDoesExist of
-        True -> do
-            pid <- readFile pidFile
+    when pidFileDoesExist $ do
+        pid <- readFile pidFile
 
-            killPid pid
-        False -> return ()
+        killPid pid
 
 killPid :: String -> IO ()
 killPid pid = do
@@ -67,5 +65,5 @@ isHaskellFile (Removed fileName _) = isHaskellFile' $ encodeString fileName
 isHaskellFile' :: String -> Bool
 isHaskellFile' fileName = 
     case matchRegex (mkRegex hsExtensionRegex) fileName of 
-      Just _ -> True
-      Nothing -> False
+        Just _ -> True
+        Nothing -> False
