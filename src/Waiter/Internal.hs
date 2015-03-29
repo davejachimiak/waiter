@@ -6,6 +6,7 @@ import System.FSNotify (withManager, watchDir, Event(..))
 import Filesystem.Path.CurrentOS (encodeString)
 import System.Process (callCommand, spawnCommand)
 import System.Process.Internals
+import System.Posix.Files (fileExist)
 import System.Posix.Signals (signalProcess, killProcess)
 import System.Posix.Types (CPid)
 import System.Environment (getArgs)
@@ -39,8 +40,13 @@ startServer = do
 
 stopServer :: IO ()
 stopServer = do
-    pid <- readFile pidFile
-    signalProcess killProcess (read pid :: CPid)
+    fileExists <- fileExist pidFile
+
+    case fileExists of
+        True ->  do
+            pid <- readFile pidFile
+            signalProcess killProcess (read pid :: CPid)
+        False -> return ()
 
 isHaskellFile :: Event -> Bool
 isHaskellFile (Added fileName _) = isHaskellFile' $ encodeString fileName
