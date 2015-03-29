@@ -18,24 +18,27 @@ import Text.Regex (mkRegex, matchRegex)
 
 import Waiter.Internal.Constants
 
-startWatcher :: IO ()
-startWatcher = withManager $ \mgr -> do
-    watchDir mgr dirToWatch isHaskellFile buildAndRun_
+type Args = [String]
+
+startWatcher :: Args -> IO ()
+startWatcher args = withManager $ \mgr -> do
+    watchDir mgr dirToWatch isHaskellFile (buildAndRun_ args)
 
     forever getLine
 
-buildAndRun :: IO ()
-buildAndRun = do
+buildAndRun :: Args -> IO ()
+buildAndRun args = do
     callCommand buildCommand
     stopServer
-    startServer
+    startServer args
 
-buildAndRun_ :: Event -> IO ()
-buildAndRun_ _ = buildAndRun
+buildAndRun_ :: Args -> Event -> IO ()
+buildAndRun_ args _ = buildAndRun args
 
-startServer :: IO ()
-startServer = do
-    (binary:_) <- getArgs
+startServer :: Args -> IO ()
+startServer args = do
+    let binary = head args
+
     (ProcessHandle mVar _) <- spawnCommand binary
     (OpenHandle pid) <- takeMVar mVar
     writeFile pidFile $ show pid

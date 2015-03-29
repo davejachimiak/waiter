@@ -1,5 +1,9 @@
+import System.Environment (getArgs)
+
 import Waiter.Internal
 
 main = do
-    buildAndRun
-    startWatcher
+    args <- getArgs
+
+    buildAndRun args
+    startWatcher args
