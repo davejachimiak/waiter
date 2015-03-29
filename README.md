@@ -11,3 +11,4 @@ languages.
 * create executable that boostraps .gitignore with pid file
 * create option to declare a custom location of pid file
 * trap ctrl-c to remove pid file, maybe?
+* write man page
