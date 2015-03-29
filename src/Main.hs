@@ -1,4 +1,4 @@
-import WatchAndBuild.Internal
+import Waiter.Internal
 
 main = do
     buildAndRun

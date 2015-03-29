@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module WatchAndBuild.Internal (buildAndRun, setWatcher) where
+module Waiter.Internal (buildAndRun, setWatcher) where
 
 import System.FSNotify (withManager, watchDir, Event(..))
 import Filesystem.Path.CurrentOS (encodeString)
@@ -13,7 +13,7 @@ import Control.Monad (forever)
 import Control.Concurrent.MVar (takeMVar)
 import Text.Regex (mkRegex, matchRegex)
 
-import WatchAndBuild.Internal.Constants
+import Waiter.Internal.Constants
 
 setWatcher :: IO ()
 setWatcher = withManager $ \mgr -> do
