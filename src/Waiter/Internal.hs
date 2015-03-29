@@ -44,10 +44,7 @@ stopServer :: IO ()
 stopServer = do
     pidFileDoesExist <- fileExist pidFile
 
-    when pidFileDoesExist $ do
-        pid <- readFile pidFile
-
-        killPid pid
+    when pidFileDoesExist $ killPid =<< readFile pidFile
 
 killPid :: String -> IO ()
 killPid pid = do
