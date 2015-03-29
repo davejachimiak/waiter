@@ -51,7 +51,7 @@ stopServer = do
 
 killPid :: String -> IO ()
 killPid pid = do
-    (exitCode, _, _) <- readProcessWithExitCode "ps" ["-p", pid] ""
+    (exitCode, _, _) <- readProcessWithExitCode ps [pFlag, pid] emptyString
 
     case exitCode of
         ExitSuccess -> signalProcess killProcess (read pid :: CPid)
