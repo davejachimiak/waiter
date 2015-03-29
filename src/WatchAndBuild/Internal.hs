@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 
 module WatchAndBuild.Internal (buildAndRun, setWatcher) where
 
