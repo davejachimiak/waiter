@@ -1,0 +1,11 @@
+# waiter
+
+Continuously run a server and rebuild it on changes for compiled
+languages.
+
+## to-do
+
+* pass build command as argument
+* pass server binary as argument
+* create executable that boostraps .gitignore with pid file
+* create option to declare a custom location of pid file
