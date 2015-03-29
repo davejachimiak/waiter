@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Waiter.Internal (buildAndRun, setWatcher) where
+module Waiter.Internal (buildAndRun, startWatcher) where
 
 import System.FSNotify (withManager, watchDir, Event(..))
 import Filesystem.Path.CurrentOS (encodeString)
@@ -18,8 +18,8 @@ import Text.Regex (mkRegex, matchRegex)
 
 import Waiter.Internal.Constants
 
-setWatcher :: IO ()
-setWatcher = withManager $ \mgr -> do
+startWatcher :: IO ()
+startWatcher = withManager $ \mgr -> do
     watchDir mgr dirToWatch isHaskellFile buildAndRun_
 
     forever getLine
