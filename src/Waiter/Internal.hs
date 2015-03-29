@@ -4,7 +4,7 @@ module Waiter.Internal (buildAndRun, setWatcher) where
 
 import System.FSNotify (withManager, watchDir, Event(..))
 import Filesystem.Path.CurrentOS (encodeString)
-import System.Process (callCommand, spawnCommand, system)
+import System.Process (callCommand, spawnCommand, readProcessWithExitCode)
 import System.Exit (ExitCode(..))
 import System.Process.Internals
 import System.Posix.Files (fileExist)
@@ -51,7 +51,7 @@ stopServer = do
 
 killPid :: String -> IO ()
 killPid pid = do
-    exitCode <- system $ checkProcessPrefix ++ pid
+    (exitCode, _, _) <- readProcessWithExitCode "ps" ["-p", pid] ""
 
     case exitCode of
         ExitSuccess -> signalProcess killProcess (read pid :: CPid)
