@@ -7,8 +7,10 @@ import Filesystem.Path.CurrentOS (encodeString, decodeString)
 import System.Process
 import System.Process.Internals
 import System.Posix.Signals
+import System.Posix.Types
 import System.Environment (getArgs)
 import Control.Monad (forever)
+import Control.Concurrent.MVar
 import Text.Regex (mkRegex, matchRegex)
 
 pidFile = "./dev-server-pid"
@@ -22,7 +24,7 @@ main = do
     watchBuildAndRun
 
 watchBuildAndRun :: IO ()
-watchBuildAndRun = do
+watchBuildAndRun =
     withManager $ \mgr -> do
         _ <- watchDir mgr dirToWatch isHaskellFile buildAndRun
 
@@ -37,21 +39,22 @@ buildAndRun _ = do
 startProgram :: IO ()
 startProgram = do
     (binary:_) <- getArgs
-    OpenHandle pid <- spawnCommand binary
-    writeFile pidFile (show pid)
+    (ProcessHandle mVar _) <- spawnCommand binary
+    (OpenHandle pid) <- takeMVar mVar
+    writeFile pidFile $ show pid
 
 stopProgram :: IO ()
 stopProgram = do
     pid <- readFile pidFile
-    signalProcess killProcess (read pid :: Int)
+    signalProcess killProcess (read pid :: CPid)
 
 isHaskellFile :: Event -> Bool
-isHaskellFile (Added file _) = isHaskellFile' $ encodeString file
-isHaskellFile (Modified file _) = isHaskellFile' $ encodeString file
-isHaskellFile (Removed file _) = isHaskellFile' $ encodeString file
+isHaskellFile (Added fileName _) = isHaskellFile' $ encodeString fileName
+isHaskellFile (Modified fileName _) = isHaskellFile' $ encodeString fileName
+isHaskellFile (Removed fileName _) = isHaskellFile' $ encodeString fileName
 
 isHaskellFile' :: String -> Bool
-isHaskellFile' file = 
-    case (matchRegex (mkRegex "hs$") file) of 
+isHaskellFile' fileName = 
+    case matchRegex (mkRegex "hs$") fileName of 
       Just _ -> True
       Nothing -> False
