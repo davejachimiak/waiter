@@ -4,10 +4,12 @@ module Waiter.Internal (buildAndRun, setWatcher) where
 
 import System.FSNotify (withManager, watchDir, Event(..))
 import Filesystem.Path.CurrentOS (encodeString)
-import System.Process (callCommand, spawnCommand)
+import System.Process (callCommand, spawnCommand, system)
+import System.Exit (ExitCode(..))
 import System.Process.Internals
 import System.Posix.Files (fileExist)
 import System.Posix.Signals (signalProcess, killProcess)
+import System.Posix.Process (getProcessStatus)
 import System.Posix.Types (CPid)
 import System.Environment (getArgs)
 import Control.Monad (forever)
@@ -40,13 +42,22 @@ startServer = do
 
 stopServer :: IO ()
 stopServer = do
-    fileExists <- fileExist pidFile
+    pidFileDoesExist <- fileExist pidFile
 
-    case fileExists of
-        True ->  do
+    case pidFileDoesExist of
+        True -> do
             pid <- readFile pidFile
-            signalProcess killProcess (read pid :: CPid)
+
+            killPid pid
         False -> return ()
+
+killPid :: String -> IO ()
+killPid pid = do
+    exitCode <- system $ checkProcessPrefix ++ pid
+
+    case exitCode of
+        ExitSuccess -> signalProcess killProcess (read pid :: CPid)
+        ExitFailure _ -> return ()
 
 isHaskellFile :: Event -> Bool
 isHaskellFile (Added fileName _) = isHaskellFile' $ encodeString fileName
