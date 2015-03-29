@@ -1,26 +1,49 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+{-import Debug.Trace-}
+
 import System.FSNotify
 import Filesystem.Path.CurrentOS (encodeString, decodeString)
-import System.Process (rawSystem)
+import System.Process
+import System.Process.Internals
+import System.Posix.Signals
 import System.Environment (getArgs)
 import Control.Monad (forever)
 import Text.Regex (mkRegex, matchRegex)
 
+pidFile = "./dev-server-pid"
+
+dirToWatch = "./src"
+
+buildCommand = "cabal build"
+
 main = do
-  (rawDir:command:_) <- getArgs
+    startProgram
+    watchBuildAndRun
 
-  let dir = decodeString rawDir
+watchBuildAndRun :: IO ()
+watchBuildAndRun = do
+    withManager $ \mgr -> do
+        _ <- watchDir mgr dirToWatch isHaskellFile buildAndRun
 
-  withManager $ \mgr -> do
-    _ <- watchDir mgr dir isHaskellFile $ runCommand command
+        forever getLine
 
-    forever getLine
+buildAndRun :: Event -> IO ()
+buildAndRun _ = do
+    callCommand buildCommand
+    stopProgram
+    startProgram
 
-runCommand :: String -> Event -> IO ()
-runCommand command _ = do
-    rawSystem command []
-    print $ "doing" ++ command
+startProgram :: IO ()
+startProgram = do
+    (binary:_) <- getArgs
+    OpenHandle pid <- spawnCommand binary
+    writeFile pidFile (show pid)
+
+stopProgram :: IO ()
+stopProgram = do
+    pid <- readFile pidFile
+    signalProcess killProcess (read pid :: Int)
 
 isHaskellFile :: Event -> Bool
 isHaskellFile (Added file _) = isHaskellFile' $ encodeString file
