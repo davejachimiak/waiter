@@ -19,10 +19,13 @@ import Waiter.Internal.Constants
 import Waiter.Types
 
 startWatcher :: CommandLine -> IO ()
-startWatcher commandLine = withManager $ \mgr -> do
-    watchDir mgr dirToWatch isHaskellFile (buildAndRun_ commandLine)
+startWatcher commandLine =
+    let fileRegex' = fileRegex commandLine
 
-    forever getLine
+    in withManager $ \mgr -> do
+        watchDir mgr dirToWatch (fileDoesMatch fileRegex') (buildAndRun' commandLine)
+
+        forever getLine
 
 buildAndRun :: CommandLine -> IO ()
 buildAndRun commandLine = do
@@ -30,8 +33,8 @@ buildAndRun commandLine = do
     stopServer
     startServer commandLine
 
-buildAndRun_ :: CommandLine -> Event -> IO ()
-buildAndRun_ commandLine _ = buildAndRun commandLine
+buildAndRun' :: CommandLine -> Event -> IO ()
+buildAndRun' commandLine _ = buildAndRun commandLine
 
 startServer :: CommandLine -> IO ()
 startServer commandLine = do
@@ -53,13 +56,13 @@ killPid pid = do
         ExitSuccess -> signalProcess killProcess (read pid :: CPid)
         ExitFailure _ -> return ()
 
-isHaskellFile :: Event -> Bool
-isHaskellFile (Added fileName _) = isHaskellFile' $ encodeString fileName
-isHaskellFile (Modified fileName _) = isHaskellFile' $ encodeString fileName
-isHaskellFile (Removed fileName _) = isHaskellFile' $ encodeString fileName
+fileDoesMatch :: String -> Event -> Bool
+fileDoesMatch fileRegex' (Added fileName _) = fileDoesMatch' fileRegex' $ encodeString fileName
+fileDoesMatch fileRegex' (Modified fileName _) = fileDoesMatch' fileRegex' $ encodeString fileName
+fileDoesMatch fileRegex' (Removed fileName _) = fileDoesMatch' fileRegex' $ encodeString fileName
 
-isHaskellFile' :: String -> Bool
-isHaskellFile' fileName = 
-    case matchRegex (mkRegex hsExtensionRegex) fileName of 
+fileDoesMatch' :: String -> String -> Bool
+fileDoesMatch' fileRegex' fileName =
+    case matchRegex (mkRegex fileRegex') fileName of
         Just _ -> True
         Nothing -> False

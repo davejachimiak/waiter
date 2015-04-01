@@ -5,7 +5,6 @@ languages.
 
 ## to-do
 
-* pass filename regex to rebuild on change to
 * pass optional directory to watch, default to ./src
 * forget this internal business
 * create executable that boostraps .gitignore with pid file
