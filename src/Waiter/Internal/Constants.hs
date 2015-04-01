@@ -6,7 +6,6 @@ import Filesystem.Path.CurrentOS (decodeString)
 
 pidFile = "./dev-server-pid"
 dirToWatch = decodeString "./src"
-buildCommand = "cabal build"
 hsExtensionRegex = "hs$"
 ps = "ps"
 emptyString = ""

@@ -5,9 +5,8 @@ languages.
 
 ## to-do
 
-* pass build command as argument
-* pass server binary as argument
+* pass filename regex to rebuild on change to
+* pass optional directory to watch, default to ./src
+* forget this internal business
 * create executable that boostraps .gitignore with pid file
 * create option to declare a custom location of pid file
-* trap ctrl-c to remove pid file, maybe?
-* write man page

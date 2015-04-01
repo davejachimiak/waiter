@@ -11,35 +11,31 @@ import System.Posix.Files (fileExist)
 import System.Posix.Signals (signalProcess, killProcess)
 import System.Posix.Process (getProcessStatus)
 import System.Posix.Types (CPid)
-import System.Environment (getArgs)
 import Control.Monad (forever, when)
 import Control.Concurrent.MVar (takeMVar)
 import Text.Regex (mkRegex, matchRegex)
 
 import Waiter.Internal.Constants
+import Waiter.Types
 
-type Args = [String]
-
-startWatcher :: Args -> IO ()
-startWatcher args = withManager $ \mgr -> do
-    watchDir mgr dirToWatch isHaskellFile (buildAndRun_ args)
+startWatcher :: CommandLine -> IO ()
+startWatcher commandLine = withManager $ \mgr -> do
+    watchDir mgr dirToWatch isHaskellFile (buildAndRun_ commandLine)
 
     forever getLine
 
-buildAndRun :: Args -> IO ()
-buildAndRun args = do
-    callCommand buildCommand
+buildAndRun :: CommandLine -> IO ()
+buildAndRun commandLine = do
+    callCommand $ buildCommand commandLine
     stopServer
-    startServer args
+    startServer commandLine
 
-buildAndRun_ :: Args -> Event -> IO ()
-buildAndRun_ args _ = buildAndRun args
+buildAndRun_ :: CommandLine -> Event -> IO ()
+buildAndRun_ commandLine _ = buildAndRun commandLine
 
-startServer :: Args -> IO ()
-startServer args = do
-    let binary = head args
-
-    (ProcessHandle mVar _) <- spawnCommand binary
+startServer :: CommandLine -> IO ()
+startServer commandLine = do
+    (ProcessHandle mVar _) <- spawnCommand $ serverCommand commandLine
     (OpenHandle pid) <- takeMVar mVar
     writeFile pidFile $ show pid
 

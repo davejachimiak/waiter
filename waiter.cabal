@@ -25,5 +25,6 @@ executable waiter
                , system-filepath ==0.4.12
                , regex-compat ==0.92
                , unix >= 2.7 && < 3
+               , optparse-applicative >= 0.11 && < 0.12
   hs-source-dirs: src
   default-language: Haskell2010
