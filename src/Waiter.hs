@@ -29,7 +29,7 @@ startWatcher commandLine = do
 buildAndRun :: CommandLine -> IO ()
 buildAndRun commandLine = do
     callCommand $ buildCommand commandLine
-    stopServer
+    stopServer $ pidFile commandLine
     startServer commandLine
 
 buildAndRun' :: CommandLine -> Event -> IO ()
@@ -39,13 +39,13 @@ startServer :: CommandLine -> IO ()
 startServer commandLine = do
     (ProcessHandle mVar _) <- spawnCommand $ serverCommand commandLine
     (OpenHandle pid) <- takeMVar mVar
-    writeFile pidFile $ show pid
+    writeFile (pidFile commandLine) (show pid)
 
-stopServer :: IO ()
-stopServer = do
-    pidFileDoesExist <- fileExist pidFile
+stopServer :: String -> IO ()
+stopServer pidFile' = do
+    pidFileDoesExist <- fileExist pidFile'
 
-    when pidFileDoesExist $ killPid =<< readFile pidFile
+    when pidFileDoesExist $ killPid =<< readFile pidFile'
 
 killPid :: String -> IO ()
 killPid pid = do
