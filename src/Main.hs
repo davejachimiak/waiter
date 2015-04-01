@@ -22,8 +22,8 @@ cli = CommandLine
         ( metavar "BUILD_COMMAND"
         <> help "the command to build your server" )
     <*> argument str
-        ( metavar "FILENAME_REGEX"
-        <> help "a regex that triggers a rebuild if a changed filename matches it" )
+        ( metavar "REGEX"
+        <> help "file change and whose names match this trigger a rebuild" )
 
 opts :: ParserInfo CommandLine
 opts = info (cli <**> helper) idm
