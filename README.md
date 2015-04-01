@@ -1,7 +1,6 @@
 # waiter
 
-Continuously run a server and rebuild it on changes for compiled
-languages.
+Run and rebuild a server on file changes for compiled languages.
 
 ## to-do
 
