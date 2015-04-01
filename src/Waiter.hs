@@ -1,6 +1,6 @@
 module Waiter (buildAndRun, startWatcher) where
 
-import System.FSNotify (withManager, watchDir, Event(..))
+import System.FSNotify (withManager, watchTree, Event(..))
 import Filesystem.Path.CurrentOS (encodeString, decodeString)
 import System.Process (callCommand, spawnCommand, readProcessWithExitCode)
 import System.Exit (ExitCode(..))
@@ -22,7 +22,7 @@ startWatcher commandLine = do
         dirToWatch = decodeString $ dir commandLine
 
     withManager $ \mgr -> do
-        watchDir mgr dirToWatch (fileDoesMatch fileRegex') (buildAndRun' commandLine)
+        watchTree mgr dirToWatch (fileDoesMatch fileRegex') (buildAndRun' commandLine)
 
         forever getLine
 

@@ -26,7 +26,7 @@ cli = CommandLine
         <> value ".*"
         <> short 'f'
         <> metavar "REGEX"
-        <> help "A rebuild is triggered for changes in files that match this regex. DEFAULT: .*" )
+        <> help "A rebuild is triggered for changes in files whose names match this regex. Default: .*" )
     <*> strOption
         ( long "dir"
         <> short 'd'
@@ -36,9 +36,9 @@ cli = CommandLine
     <*> strOption
         ( long "pid-file"
         <> short 'p'
-        <> value "./dev-server-pid"
+        <> value "./.dev-server-pid"
         <> metavar "PID_FILE"
-        <> help "File to store server pid. Default: ./dev-server-pid" )
+        <> help "File to store server pid. Default: ./.dev-server-pid" )
 
 opts :: ParserInfo CommandLine
 opts = info (cli <**> helper) idm
