@@ -1,6 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
-
-module Waiter.Internal (buildAndRun, startWatcher) where
+module Waiter (buildAndRun, startWatcher) where
 
 import System.FSNotify (withManager, watchDir, Event(..))
 import Filesystem.Path.CurrentOS (encodeString)
@@ -15,7 +13,7 @@ import Control.Monad (forever, when)
 import Control.Concurrent.MVar (takeMVar)
 import Text.Regex (mkRegex, matchRegex)
 
-import Waiter.Internal.Constants
+import Waiter.Constants
 import Waiter.Types
 
 startWatcher :: CommandLine -> IO ()

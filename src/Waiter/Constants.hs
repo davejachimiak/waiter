@@ -1,6 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
-
-module Waiter.Internal.Constants where
+module Waiter.Constants where
 
 import Filesystem.Path.CurrentOS (decodeString)
 

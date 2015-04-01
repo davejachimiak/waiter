@@ -1,10 +1,8 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 import Options.Applicative
 import Options.Applicative.Types
 import System.Environment (getArgs)
 
-import Waiter.Internal (buildAndRun, startWatcher)
+import Waiter (buildAndRun, startWatcher)
 import Waiter.Types (CommandLine(..))
 
 main :: IO ()
