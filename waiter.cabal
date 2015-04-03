@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                waiter
-version:             0.1.0.0
+version:             0.1.0.1
 -- synopsis:            
 -- description:         
 license:             MIT
@@ -19,7 +19,7 @@ executable waiter
   main-is: Main.hs
   -- other-modules:       
   -- other-extensions:    
-  build-depends: base >=4.7 && <4.8
+  build-depends: base
                , fsnotify ==0.1.0.3
                , process ==1.2.0.0
                , system-filepath ==0.4.12
