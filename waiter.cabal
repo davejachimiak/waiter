@@ -19,10 +19,10 @@ executable waiter
   main-is: Main.hs
   -- other-modules:       
   -- other-extensions:    
-  build-depends: base >=4.7 && <4.8
+  build-depends: base ==4.8.0.0
                , fsnotify ==0.1.0.3
-               , process ==1.2.0.0
-               , system-filepath ==0.4.12
+               , process ==1.2.3.0
+               , system-filepath ==0.4.13.2
                , regex-compat ==0.92
                , unix >= 2.7 && < 3
                , optparse-applicative >= 0.11 && < 0.12
