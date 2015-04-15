@@ -1,6 +1,7 @@
 import Options.Applicative
 import Options.Applicative.Types
 import System.Environment (getArgs)
+import Control.Concurrent.MVar (newMVar)
 
 import Waiter (buildAndRun, startWatcher)
 import Waiter.Types (CommandLine(..))
@@ -10,8 +11,9 @@ main = run =<< execParser opts
 
 run :: CommandLine -> IO ()
 run commandLine = do
-    buildAndRun commandLine
-    startWatcher commandLine
+    buildsState <- newMVar []
+    buildAndRun commandLine buildsState
+    startWatcher commandLine buildsState
 
 cli :: Parser CommandLine
 cli = CommandLine

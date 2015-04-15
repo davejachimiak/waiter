@@ -1,8 +1,8 @@
 module Waiter (buildAndRun, startWatcher) where
 
-import System.FSNotify (withManager, watchTree, Event(..))
 import Filesystem.Path.CurrentOS (encodeString, decodeString)
-import System.Process (callCommand, spawnCommand, readProcessWithExitCode)
+import System.FSNotify (withManager, watchTree, Event(..))
+import System.Process (waitForProcess, callCommand, spawnCommand, readProcessWithExitCode)
 import System.Exit (ExitCode(..))
 import System.Process.Internals
 import System.Posix.Files (fileExist)
@@ -13,33 +13,54 @@ import Control.Monad (forever, when, unless)
 import Control.Concurrent.MVar (MVar, newMVar, readMVar, takeMVar, swapMVar)
 import Control.Concurrent (threadDelay, takeMVar)
 import Text.Regex (mkRegex, matchRegex)
+import Data.List (delete)
 
 import Waiter.Constants
 import Waiter.Types
 
-startWatcher :: CommandLine -> IO ()
-startWatcher commandLine = do
+startWatcher :: CommandLine -> MVar [CPid] -> IO ()
+startWatcher commandLine buildsState = do
     let fileRegex' = fileRegex commandLine
         dirToWatch = decodeString $ dir commandLine
 
     blockState <- newMVar False
 
     withManager $ \mgr -> do
-        watchTree mgr dirToWatch (fileDoesMatch fileRegex') (buildAndRun' commandLine blockState)
+        watchTree
+            mgr
+            dirToWatch
+            (fileDoesMatch fileRegex')
+            $ buildAndRun' commandLine blockState buildsState
 
         forever getLine
 
-buildAndRun :: CommandLine -> IO ()
-buildAndRun commandLine = do
-    callCommand $ buildCommand commandLine
-    stopServer $ pidFile commandLine
-    startServer commandLine
+buildAndRun :: CommandLine -> MVar [CPid] -> IO ()
+buildAndRun commandLine buildsState = do
+    processHandle <- spawnCommand $ buildCommand commandLine
 
-buildAndRun' :: CommandLine -> MVar Bool -> Event -> IO ()
-buildAndRun' commandLine blockState _ = do
+    let (ProcessHandle mVar _) = processHandle
+
+    (OpenHandle pid) <- readMVar mVar
+    buildPids' <- readMVar buildsState
+    swapMVar buildsState $ pid : buildPids'
+    waitForProcess processHandle
+    buildPids'' <- readMVar buildsState
+
+    let newPids = delete pid buildPids''
+
+    swapMVar buildsState newPids
+
+    case null newPids of
+        True -> do
+            stopServer $ pidFile commandLine
+            startServer commandLine
+        False -> return ()
+
+buildAndRun' :: CommandLine -> MVar Bool -> MVar [CPid] -> Event -> IO ()
+buildAndRun' commandLine blockState buildsState _ = do
     block <- readMVar blockState
 
-    unless block $ blockBatchEvents blockState >> buildAndRun commandLine
+    unless block $ blockBatchEvents blockState >> buildAndRun commandLine buildsState
 
 blockBatchEvents :: MVar Bool -> IO Bool
 blockBatchEvents blockState = do
