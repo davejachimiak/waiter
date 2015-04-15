@@ -22,10 +22,10 @@ startWatcher commandLine = do
     let fileRegex' = fileRegex commandLine
         dirToWatch = decodeString $ dir commandLine
 
-    passState <- newMVar False
+    blockState <- newMVar False
 
     withManager $ \mgr -> do
-        watchTree mgr dirToWatch (fileDoesMatch fileRegex') (buildAndRun' commandLine passState)
+        watchTree mgr dirToWatch (fileDoesMatch fileRegex') (buildAndRun' commandLine blockState)
 
         forever getLine
 
@@ -36,14 +36,16 @@ buildAndRun commandLine = do
     startServer commandLine
 
 buildAndRun' :: CommandLine -> MVar Bool -> Event -> IO ()
-buildAndRun' commandLine passState _ = do
-    doPass <- readMVar passState
+buildAndRun' commandLine blockState _ = do
+    block <- readMVar blockState
 
-    unless doPass $ do
-        swapMVar passState True
-        threadDelay 100000 -- microseconds: 0.1 seconds
-        swapMVar passState False
-        buildAndRun commandLine
+    unless block $ blockBatchEvents blockState >> buildAndRun commandLine
+
+blockBatchEvents :: MVar Bool -> IO Bool
+blockBatchEvents blockState = do
+    swapMVar blockState True
+    threadDelay 100000 -- microseconds: 0.1 seconds
+    swapMVar blockState False
 
 startServer :: CommandLine -> IO ()
 startServer commandLine = do
