@@ -50,11 +50,9 @@ buildAndRun commandLine buildsState = do
 
     swapMVar buildsState newPids
 
-    case null newPids of
-        True -> do
-            stopServer $ pidFile commandLine
-            startServer commandLine
-        False -> return ()
+    when (null newPids) $ do
+        stopServer $ pidFile commandLine
+        startServer commandLine
 
 buildAndRun' :: CommandLine -> MVar Bool -> MVar [CPid] -> Event -> IO ()
 buildAndRun' commandLine blockState buildsState _ = do
