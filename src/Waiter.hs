@@ -9,8 +9,9 @@ import System.Posix.Files (fileExist)
 import System.Posix.Signals (signalProcess, killProcess)
 import System.Posix.Process (getProcessStatus)
 import System.Posix.Types (CPid)
-import Control.Monad (forever, when)
-import Control.Concurrent.MVar (takeMVar)
+import Control.Monad (forever, when, unless)
+import Control.Concurrent.MVar (MVar, newMVar, readMVar, takeMVar, swapMVar)
+import Control.Concurrent (threadDelay, takeMVar)
 import Text.Regex (mkRegex, matchRegex)
 
 import Waiter.Constants
@@ -21,8 +22,10 @@ startWatcher commandLine = do
     let fileRegex' = fileRegex commandLine
         dirToWatch = decodeString $ dir commandLine
 
+    passState <- newMVar False
+
     withManager $ \mgr -> do
-        watchTree mgr dirToWatch (fileDoesMatch fileRegex') (buildAndRun' commandLine)
+        watchTree mgr dirToWatch (fileDoesMatch fileRegex') (buildAndRun' commandLine passState)
 
         forever getLine
 
@@ -32,8 +35,15 @@ buildAndRun commandLine = do
     stopServer $ pidFile commandLine
     startServer commandLine
 
-buildAndRun' :: CommandLine -> Event -> IO ()
-buildAndRun' commandLine _ = buildAndRun commandLine
+buildAndRun' :: CommandLine -> MVar Bool -> Event -> IO ()
+buildAndRun' commandLine passState _ = do
+    doPass <- readMVar passState
+
+    unless doPass $ do
+        swapMVar passState True
+        threadDelay 100000 -- microseconds: 0.1 seconds
+        swapMVar passState False
+        buildAndRun commandLine
 
 startServer :: CommandLine -> IO ()
 startServer commandLine = do
