@@ -1,4 +1,4 @@
-module Waiter (buildAndRun, startWatcher) where
+module Waiter (run) where
 
 import Filesystem.Path.CurrentOS (encodeString, decodeString)
 import System.FSNotify (withManager, watchTree, Event(..))
@@ -18,12 +18,15 @@ import Data.List (delete)
 import Waiter.Constants
 import Waiter.Types
 
-startWatcher :: CommandLine -> MVar [CPid] -> IO ()
-startWatcher commandLine buildsState = do
+run :: CommandLine -> IO ()
+run commandLine = do
     let fileRegex' = fileRegex commandLine
         dirToWatch = decodeString $ dir commandLine
 
+    buildsState <- newMVar []
     blockState <- newMVar False
+
+    buildAndRun commandLine buildsState
 
     withManager $ \mgr -> do
         watchTree
