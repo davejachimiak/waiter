@@ -29,12 +29,6 @@ cli = CommandLine
         <> value "./src"
         <> metavar "DIR"
         <> help "Look for file changes in this directory. Default: ./src" )
-    <*> strOption
-        ( long "pid-file"
-        <> short 'p'
-        <> value "./.dev-server-pid"
-        <> metavar "PID_FILE"
-        <> help "File to store server pid. Default: ./.dev-server-pid" )
 
 opts :: ParserInfo CommandLine
 opts = info (cli <**> helper) idm

@@ -2,15 +2,14 @@ module Waiter (run) where
 
 import Filesystem.Path.CurrentOS (encodeString, decodeString)
 import System.FSNotify (withManager, watchTree, Event(..))
-import System.Process (waitForProcess, callCommand, spawnCommand, readProcessWithExitCode)
+import System.Process (waitForProcess, terminateProcess, spawnCommand, readProcessWithExitCode)
 import System.Exit (ExitCode(..))
 import System.Process.Internals
-import System.Posix.Files (fileExist)
 import System.Posix.Signals (signalProcess, killProcess)
 import System.Posix.Process (getProcessStatus)
 import System.Posix.Types (CPid)
 import Control.Monad (forever, when, unless)
-import Control.Concurrent.MVar (MVar, newMVar, readMVar, takeMVar, swapMVar)
+import Control.Concurrent.MVar
 import Control.Concurrent (threadDelay, takeMVar)
 import Text.Regex (mkRegex, matchRegex)
 import Data.List (delete)
@@ -25,25 +24,26 @@ run commandLine = do
 
     buildPids <- newMVar []
     blockState <- newMVar False
+    serverProcess <- newEmptyMVar
 
-    buildAndRun commandLine buildPids
+    buildAndRun commandLine buildPids serverProcess
 
     withManager $ \mgr -> do
         watchTree
             mgr
             dirToWatch
             (fileDoesMatch regexToWatch)
-            $ blockBuildAndRun commandLine blockState buildPids
+            $ blockBuildAndRun commandLine blockState buildPids serverProcess
 
         forever getLine
 
-buildAndRun :: CommandLine -> MVar [CPid] -> IO ()
-buildAndRun commandLine buildPids = do
+buildAndRun :: CommandLine -> MVar [CPid] -> MVar ProcessHandle -> IO ()
+buildAndRun commandLine buildPids serverProcess = do
     currentBuildPids <- build (buildCommand commandLine) buildPids
 
     when (null currentBuildPids)
-        $ stopServer (pidFile commandLine)
-        >> startServer commandLine
+        $ stopServer serverProcess
+        >> startServer commandLine serverProcess
 
 build :: String -> MVar [CPid] -> IO [CPid]
 build buildCommand buildPids = do
@@ -59,13 +59,16 @@ build buildCommand buildPids = do
 
     buildPidsAfterBuild <- readMVar buildPids
 
-    swapMVar buildPids $ delete pid buildPidsAfterBuild
+    let newPids = delete pid buildPidsAfterBuild
 
-blockBuildAndRun :: CommandLine -> MVar Bool -> MVar [CPid] -> Event -> IO ()
-blockBuildAndRun commandLine blockState buildPids _ = do
+    swapMVar buildPids newPids
+    return newPids
+
+blockBuildAndRun :: CommandLine -> MVar Bool -> MVar [CPid] -> MVar ProcessHandle -> Event -> IO ()
+blockBuildAndRun commandLine blockState buildPids serverProcess _ = do
     doBlock <- readMVar blockState
 
-    unless doBlock $ blockBatchEvents blockState >> buildAndRun commandLine buildPids
+    unless doBlock $ blockBatchEvents blockState >> buildAndRun commandLine buildPids serverProcess
 
 blockBatchEvents :: MVar Bool -> IO Bool
 blockBatchEvents blockState = do
@@ -73,25 +76,19 @@ blockBatchEvents blockState = do
     threadDelay 100000 -- microseconds: 0.1 seconds
     swapMVar blockState False
 
-startServer :: CommandLine -> IO ()
-startServer commandLine = do
-    (ProcessHandle mVar _) <- spawnCommand $ serverCommand commandLine
-    (OpenHandle pid) <- takeMVar mVar
-    writeFile (pidFile commandLine) (show pid)
+startServer :: CommandLine -> MVar ProcessHandle -> IO ()
+startServer commandLine serverProcess = do
+    newServerProcess <- spawnCommand $ serverCommand commandLine
+    putMVar serverProcess newServerProcess
+    return ()
 
-stopServer :: String -> IO ()
-stopServer pidFile' = do
-    pidFileDoesExist <- fileExist pidFile'
+stopServer :: MVar ProcessHandle -> IO ()
+stopServer serverProcess = do
+    result <- tryTakeMVar serverProcess
 
-    when pidFileDoesExist $ killPid =<< readFile pidFile'
-
-killPid :: String -> IO ()
-killPid pid = do
-    (exitCode, _, _) <- readProcessWithExitCode ps [pFlag, pid] emptyString
-
-    case exitCode of
-        ExitSuccess -> signalProcess killProcess (read pid :: CPid)
-        ExitFailure _ -> return ()
+    case result of
+        Just process -> terminateProcess process
+        Nothing -> return ()
 
 fileDoesMatch :: String -> Event -> Bool
 fileDoesMatch regexToWatch (Added fileName _) = fileDoesMatch' regexToWatch $ encodeString fileName
