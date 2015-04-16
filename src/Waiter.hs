@@ -20,48 +20,50 @@ import Waiter.Types
 
 run :: CommandLine -> IO ()
 run commandLine = do
-    let fileRegex' = fileRegex commandLine
+    let regexToWatch = fileRegex commandLine
         dirToWatch = decodeString $ dir commandLine
 
-    buildsState <- newMVar []
+    buildPids <- newMVar []
     blockState <- newMVar False
 
-    buildAndRun commandLine buildsState
+    buildAndRun commandLine buildPids
 
     withManager $ \mgr -> do
         watchTree
             mgr
             dirToWatch
-            (fileDoesMatch fileRegex')
-            $ buildAndRun' commandLine blockState buildsState
+            (fileDoesMatch regexToWatch)
+            $ blockBuildAndRun commandLine blockState buildPids
 
         forever getLine
 
 buildAndRun :: CommandLine -> MVar [CPid] -> IO ()
-buildAndRun commandLine buildsState = do
-    processHandle <- spawnCommand $ buildCommand commandLine
+buildAndRun commandLine buildPids = do
+    newPids <- build (buildCommand commandLine) buildPids
 
-    let (ProcessHandle mVar _) = processHandle
+    when (null newPids) $ stopServer (pidFile commandLine) >> startServer commandLine
 
-    (OpenHandle pid) <- readMVar mVar
-    buildPids' <- readMVar buildsState
-    swapMVar buildsState $ pid : buildPids'
-    waitForProcess processHandle
-    buildPids'' <- readMVar buildsState
+build :: String -> MVar [CPid] -> IO ([CPid])
+build buildCommand buildPids = do
+    buildProcess <- spawnCommand buildCommand
 
-    let newPids = delete pid buildPids''
+    let (ProcessHandle openHandle _) = buildProcess
 
-    swapMVar buildsState newPids
+    (OpenHandle pid) <- readMVar openHandle
+    existingBuildPids <- readMVar buildPids
 
-    when (null newPids) $ do
-        stopServer $ pidFile commandLine
-        startServer commandLine
+    swapMVar buildPids $ pid : existingBuildPids
+    waitForProcess buildProcess
 
-buildAndRun' :: CommandLine -> MVar Bool -> MVar [CPid] -> Event -> IO ()
-buildAndRun' commandLine blockState buildsState _ = do
-    block <- readMVar blockState
+    buildPidsAfterBuild <- readMVar buildPids
 
-    unless block $ blockBatchEvents blockState >> buildAndRun commandLine buildsState
+    swapMVar buildPids $ delete pid buildPidsAfterBuild
+
+blockBuildAndRun :: CommandLine -> MVar Bool -> MVar [CPid] -> Event -> IO ()
+blockBuildAndRun commandLine blockState buildPids _ = do
+    doBlock <- readMVar blockState
+
+    unless doBlock $ blockBatchEvents blockState >> buildAndRun commandLine buildPids
 
 blockBatchEvents :: MVar Bool -> IO Bool
 blockBatchEvents blockState = do
@@ -90,12 +92,12 @@ killPid pid = do
         ExitFailure _ -> return ()
 
 fileDoesMatch :: String -> Event -> Bool
-fileDoesMatch fileRegex' (Added fileName _) = fileDoesMatch' fileRegex' $ encodeString fileName
-fileDoesMatch fileRegex' (Modified fileName _) = fileDoesMatch' fileRegex' $ encodeString fileName
-fileDoesMatch fileRegex' (Removed fileName _) = fileDoesMatch' fileRegex' $ encodeString fileName
+fileDoesMatch regexToWatch (Added fileName _) = fileDoesMatch' regexToWatch $ encodeString fileName
+fileDoesMatch regexToWatch (Modified fileName _) = fileDoesMatch' regexToWatch $ encodeString fileName
+fileDoesMatch regexToWatch (Removed fileName _) = fileDoesMatch' regexToWatch $ encodeString fileName
 
 fileDoesMatch' :: String -> String -> Bool
-fileDoesMatch' fileRegex' fileName =
-    case matchRegex (mkRegex fileRegex') fileName of
+fileDoesMatch' regexToWatch fileName =
+    case matchRegex (mkRegex regexToWatch) fileName of
         Just _ -> True
         Nothing -> False
