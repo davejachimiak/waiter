@@ -39,11 +39,13 @@ run commandLine = do
 
 buildAndRun :: CommandLine -> MVar [CPid] -> IO ()
 buildAndRun commandLine buildPids = do
-    newPids <- build (buildCommand commandLine) buildPids
+    currentBuildPids <- build (buildCommand commandLine) buildPids
 
-    when (null newPids) $ stopServer (pidFile commandLine) >> startServer commandLine
+    when (null currentBuildPids)
+        $ stopServer (pidFile commandLine)
+        >> startServer commandLine
 
-build :: String -> MVar [CPid] -> IO ([CPid])
+build :: String -> MVar [CPid] -> IO [CPid]
 build buildCommand buildPids = do
     buildProcess <- spawnCommand buildCommand
 
