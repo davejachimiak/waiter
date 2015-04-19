@@ -14,7 +14,6 @@ import Control.Concurrent (threadDelay, takeMVar)
 import Text.Regex (mkRegex, matchRegex)
 import Data.List (delete)
 
-import Waiter.Constants
 import Waiter.Types
 
 run :: CommandLine -> IO ()
