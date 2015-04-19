@@ -2,15 +2,12 @@ module Waiter (run) where
 
 import Filesystem.Path.CurrentOS (encodeString, decodeString)
 import System.FSNotify (withManager, watchTree, Event(..))
-import System.Process (waitForProcess, terminateProcess, spawnCommand, readProcessWithExitCode)
-import System.Exit (ExitCode(..))
+import System.Process (waitForProcess, terminateProcess, spawnCommand)
 import System.Process.Internals
-import System.Posix.Signals (signalProcess, killProcess)
-import System.Posix.Process (getProcessStatus)
 import System.Posix.Types (CPid)
 import Control.Monad (forever, when, unless)
 import Control.Concurrent.MVar
-import Control.Concurrent (threadDelay, takeMVar)
+import Control.Concurrent (threadDelay)
 import Text.Regex (mkRegex, matchRegex)
 import Data.List (delete)
 
