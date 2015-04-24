@@ -29,7 +29,7 @@ run commandLine = do
             mgr
             dirToWatch
             (fileDoesMatch regexToWatch)
-            $ blockBuildAndRun commandLine blockState buildPids serverProcess
+            $ blockBuildAndServe commandLine blockState buildPids serverProcess
 
         forever getLine
 
@@ -60,8 +60,8 @@ build buildCommand buildPids = do
     swapMVar buildPids newPids
     return newPids
 
-blockBuildAndRun :: CommandLine -> MVar Bool -> MVar [CPid] -> MVar ProcessHandle -> Event -> IO ()
-blockBuildAndRun commandLine blockState buildPids serverProcess _ = do
+blockBuildAndServe :: CommandLine -> MVar Bool -> MVar [CPid] -> MVar ProcessHandle -> Event -> IO ()
+blockBuildAndServe commandLine blockState buildPids serverProcess _ = do
     doBlock <- readMVar blockState
 
     unless doBlock $ blockBatchEvents blockState >> buildAndRun commandLine buildPids serverProcess
