@@ -1,7 +1,7 @@
 # waiter
 
 Waiter is an abstract development server for compiled languages. It runs
-your server, compiles when you change a specified file, and manages
+your server, compiles it when you change a file, and manages
 compilation and server processes.
 
 ## Install
