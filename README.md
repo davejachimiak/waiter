@@ -40,6 +40,9 @@ Example:
 ```
 
 #### BUILD_COMMAND
+This is the command that builds your server. It should generate the
+binary run by `SERVER_COMMAND`.
+
 Example:
 ```
 "cabal build"
