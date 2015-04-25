@@ -1,8 +1,8 @@
 # waiter
 
 Waiter is an abstract development server for compiled languages. It runs
-your server, compiles it when you change a file, and manages
-compilation and server processes.
+your server, compiles it when you change a file, and manages compilation
+and server processes.
 
 ## Install
 
@@ -28,7 +28,7 @@ That would run your server binary `./blog-server` with the environment
 variable `ENV` set to `development`. It would run `cabal build` when
 files with the regex `hs$` in the `./lib` tree change. After all build
 processes finish, it would kill the previous `./blog-server` process and
-starts a new one with the newly built binary.
+start a new one from the newly built binary.
 
 ### Required:
 #### SERVER_COMMAND
