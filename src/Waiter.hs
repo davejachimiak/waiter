@@ -13,58 +13,57 @@ import Data.List (delete)
 
 import Waiter.Types
 
+instance Eq ProcessHandle where
+    (ProcessHandle handle1 _) == (ProcessHandle handle2 _) = handle1 == handle2
+
 run :: CommandLine -> IO ()
 run commandLine = do
     let regexToWatch = fileRegex commandLine
         dirToWatch = decodeString $ dir commandLine
 
-    buildPids <- newMVar []
+    buildsState <- newMVar []
     blockState <- newMVar False
     serverProcess <- newEmptyMVar
 
-    buildAndRun commandLine buildPids serverProcess
+    buildAndServe commandLine buildsState serverProcess
 
     withManager $ \mgr -> do
         watchTree
             mgr
             dirToWatch
             (fileDoesMatch regexToWatch)
-            $ blockBuildAndServe commandLine blockState buildPids serverProcess
+            $ blockBuildAndServe commandLine blockState buildsState serverProcess
 
         forever getLine
 
-buildAndRun :: CommandLine -> MVar [CPid] -> MVar ProcessHandle -> IO ()
-buildAndRun commandLine buildPids serverProcess = do
-    currentBuildPids <- build (buildCommand commandLine) buildPids
+buildAndServe :: CommandLine -> MVar [ProcessHandle] -> MVar ProcessHandle -> IO ()
+buildAndServe commandLine buildsState serverProcess = do
+    currentBuilds <- build (buildCommand commandLine) buildsState
 
-    when (null currentBuildPids)
+    when (null currentBuilds)
         $ stopServer serverProcess
         >> startServer commandLine serverProcess
 
-build :: String -> MVar [CPid] -> IO [CPid]
-build buildCommand buildPids = do
+build :: String -> MVar [ProcessHandle] -> IO [ProcessHandle]
+build buildCommand buildsState = do
     buildProcess <- spawnCommand buildCommand
+    existingBuilds <- readMVar buildsState
 
-    let (ProcessHandle openHandle _) = buildProcess
-
-    (OpenHandle pid) <- readMVar openHandle
-    existingBuildPids <- readMVar buildPids
-
-    swapMVar buildPids $ pid : existingBuildPids
+    swapMVar buildsState $ buildProcess : existingBuilds
     waitForProcess buildProcess
 
-    buildPidsAfterBuild <- readMVar buildPids
+    buildsStateAfterBuild <- readMVar buildsState
 
-    let newPids = delete pid buildPidsAfterBuild
+    let buildProcesses = delete buildProcess buildsStateAfterBuild
 
-    swapMVar buildPids newPids
-    return newPids
+    swapMVar buildsState buildProcesses
+    return buildProcesses
 
-blockBuildAndServe :: CommandLine -> MVar Bool -> MVar [CPid] -> MVar ProcessHandle -> Event -> IO ()
-blockBuildAndServe commandLine blockState buildPids serverProcess _ = do
+blockBuildAndServe :: CommandLine -> MVar Bool -> MVar [ProcessHandle] -> MVar ProcessHandle -> Event -> IO ()
+blockBuildAndServe commandLine blockState buildsState serverProcess _ = do
     doBlock <- readMVar blockState
 
-    unless doBlock $ blockBatchEvents blockState >> buildAndRun commandLine buildPids serverProcess
+    unless doBlock $ blockBatchEvents blockState >> buildAndServe commandLine buildsState serverProcess
 
 blockBatchEvents :: MVar Bool -> IO Bool
 blockBatchEvents blockState = do
