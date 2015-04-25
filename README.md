@@ -7,6 +7,8 @@ compilation and server processes.
 ## Install
 
 ### Homebrew
+(coming soon)
+
 ```sh
 $ brew install waiter
 ```
