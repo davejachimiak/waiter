@@ -1,7 +1,5 @@
 import Options.Applicative
 import Options.Applicative.Types
-import System.Environment (getArgs)
-import Control.Concurrent.MVar (newMVar)
 
 import Waiter (run)
 import Waiter.Types (CommandLine(..))
