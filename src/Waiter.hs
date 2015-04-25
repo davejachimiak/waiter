@@ -1,10 +1,9 @@
 module Waiter (run) where
 
-import Filesystem.Path.CurrentOS (encodeString, decodeString)
-import System.FSNotify (withManager, watchTree, Event(..))
+import Filesystem.Path.CurrentOS (decodeString)
+import System.FSNotify (withManager, watchTree, Event)
 import System.Process (waitForProcess, terminateProcess, spawnCommand)
-import System.Process.Internals
-import System.Posix.Types (CPid)
+import System.Process.Internals (ProcessHandle(..))
 import Control.Monad (forever, when, unless)
 import Control.Concurrent.MVar
 import Control.Concurrent (threadDelay)
@@ -12,9 +11,6 @@ import Text.Regex (mkRegex, matchRegex)
 import Data.List (delete)
 
 import Waiter.Types
-
-instance Eq ProcessHandle where
-    (ProcessHandle handle1 _) == (ProcessHandle handle2 _) = handle1 == handle2
 
 run :: CommandLine -> IO ()
 run commandLine = do
@@ -36,7 +32,10 @@ run commandLine = do
 
         forever getLine
 
-buildAndServe :: CommandLine -> MVar [ProcessHandle] -> MVar ProcessHandle -> IO ()
+buildAndServe :: CommandLine
+              -> MVar [ProcessHandle]
+              -> MVar ProcessHandle
+              -> IO ()
 buildAndServe commandLine buildsState serverProcess = do
     currentBuilds <- build (buildCommand commandLine) buildsState
 
@@ -59,11 +58,18 @@ build buildCommand buildsState = do
     swapMVar buildsState buildProcesses
     return buildProcesses
 
-blockBuildAndServe :: CommandLine -> MVar Bool -> MVar [ProcessHandle] -> MVar ProcessHandle -> Event -> IO ()
+blockBuildAndServe :: CommandLine
+                   -> MVar Bool
+                   -> MVar [ProcessHandle]
+                   -> MVar ProcessHandle
+                   -> Event
+                   -> IO ()
 blockBuildAndServe commandLine blockState buildsState serverProcess _ = do
     doBlock <- readMVar blockState
 
-    unless doBlock $ blockBatchEvents blockState >> buildAndServe commandLine buildsState serverProcess
+    unless doBlock
+        $ blockBatchEvents blockState
+        >> buildAndServe commandLine buildsState serverProcess
 
 blockBatchEvents :: MVar Bool -> IO Bool
 blockBatchEvents blockState = do
@@ -84,14 +90,3 @@ stopServer serverProcess = do
     case result of
         Just process -> terminateProcess process
         Nothing -> return ()
-
-fileDoesMatch :: String -> Event -> Bool
-fileDoesMatch regexToWatch (Added fileName _) = fileDoesMatch' regexToWatch $ encodeString fileName
-fileDoesMatch regexToWatch (Modified fileName _) = fileDoesMatch' regexToWatch $ encodeString fileName
-fileDoesMatch regexToWatch (Removed fileName _) = fileDoesMatch' regexToWatch $ encodeString fileName
-
-fileDoesMatch' :: String -> String -> Bool
-fileDoesMatch' regexToWatch fileName =
-    case matchRegex (mkRegex regexToWatch) fileName of
-        Just _ -> True
-        Nothing -> False
