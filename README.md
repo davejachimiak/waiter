@@ -7,9 +7,9 @@ and server processes.
 ## Install
 
 ### Homebrew
-(coming soon)
 
 ```sh
+$ brew tap davejachimiak/tap
 $ brew install waiter
 ```
 
