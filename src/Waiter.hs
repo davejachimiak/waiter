@@ -2,53 +2,74 @@ module Waiter (run) where
 
 import Filesystem.Path.CurrentOS (decodeString)
 import System.FSNotify (withManager, watchTree, Event)
-import System.Process (waitForProcess, terminateProcess, spawnCommand, callCommand)
+import System.Process (waitForProcess, terminateProcess, spawnCommand)
 import System.Process.Internals (ProcessHandle(..))
-import Control.Monad (forever, unless)
+import Control.Monad (forever, when, unless)
 import Control.Concurrent.MVar
 import Control.Concurrent (threadDelay)
 import Text.Regex (mkRegex, matchRegex)
 import Data.List (delete)
 
-import Waiter.Types 
-import Waiter.FileMatcher (fileDoesMatch)
+import Waiter.Types
 
 run :: CommandLine -> IO ()
 run commandLine = do
     let regexToWatch = fileRegex commandLine
         dirToWatch = decodeString $ dir commandLine
 
+    buildsState <- newMVar []
     blockState <- newMVar False
     serverProcess <- newEmptyMVar
 
-    buildAndServe commandLine serverProcess
+    buildAndServe commandLine buildsState serverProcess
 
     withManager $ \mgr -> do
         watchTree
             mgr
             dirToWatch
             (fileDoesMatch regexToWatch)
-            $ blockBuildAndServe commandLine blockState serverProcess
+            $ blockBuildAndServe commandLine blockState buildsState serverProcess
 
         forever getLine
 
-buildAndServe :: CommandLine -> MVar ProcessHandle -> IO ()
-buildAndServe commandLine serverProcess = do
-    callCommand $ buildCommand commandLine
-    stopServer serverProcess
-    startServer commandLine serverProcess
+buildAndServe :: CommandLine
+              -> MVar [ProcessHandle]
+              -> MVar ProcessHandle
+              -> IO ()
+buildAndServe commandLine buildsState serverProcess = do
+    currentBuilds <- build (buildCommand commandLine) buildsState
+
+    when (null currentBuilds)
+        $ stopServer serverProcess
+        >> startServer commandLine serverProcess
+
+build :: String -> MVar [ProcessHandle] -> IO [ProcessHandle]
+build buildCommand buildsState = do
+    buildProcess <- spawnCommand buildCommand
+    existingBuilds <- readMVar buildsState
+
+    swapMVar buildsState $ buildProcess : existingBuilds
+    waitForProcess buildProcess
+
+    buildsStateAfterBuild <- readMVar buildsState
+
+    let buildProcesses = delete buildProcess buildsStateAfterBuild
+
+    swapMVar buildsState buildProcesses
+    return buildProcesses
 
 blockBuildAndServe :: CommandLine
                    -> MVar Bool
+                   -> MVar [ProcessHandle]
                    -> MVar ProcessHandle
                    -> Event
                    -> IO ()
-blockBuildAndServe commandLine blockState serverProcess _ = do
+blockBuildAndServe commandLine blockState buildsState serverProcess _ = do
     doBlock <- readMVar blockState
 
     unless doBlock
         $ blockBatchEvents blockState
-        >> buildAndServe commandLine serverProcess
+        >> buildAndServe commandLine buildsState serverProcess
 
 blockBatchEvents :: MVar Bool -> IO Bool
 blockBatchEvents blockState = do
