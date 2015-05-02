@@ -81,7 +81,6 @@ startServer :: CommandLine -> ServerProcess -> IO ()
 startServer commandLine serverProcess = do
     newServerProcess <- spawnCommand $ serverCommand commandLine
     putMVar serverProcess newServerProcess
-    return ()
 
 maybeTerminateProcessFromMVar :: MVar ProcessHandle -> IO ()
 maybeTerminateProcessFromMVar processMVar = do
