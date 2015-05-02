@@ -17,28 +17,28 @@ import Waiter.Types
 
 run :: CommandLine -> IO ()
 run commandLine = do
-    let regexToWatch = fileRegex commandLine
-        dirToWatch = decodeString $ dir commandLine
-
-    currentBuild <- newEmptyMVar
-    blockState <- newMVar False
-    serverProcess <- newEmptyMVar
+    (currentBuild, blockState, serverProcess) <- createStates
 
     buildAndServe commandLine currentBuild serverProcess
 
     withManager $ \mgr -> do
         watchTree
             mgr
-            dirToWatch
-            (fileDoesMatch regexToWatch)
+            (decodeString $ dir commandLine)
+            (fileDoesMatch $ fileRegex commandLine)
             $ blockBuildAndServe commandLine blockState currentBuild serverProcess
 
         forever getLine
 
-buildAndServe :: CommandLine
-              -> CurrentBuild
-              -> ServerProcess
-              -> IO ()
+createStates :: IO (CurrentBuild, BlockState, ServerProcess)
+createStates = do
+    currentBuild <- newEmptyMVar
+    blockState <- newMVar False
+    serverProcess <- newEmptyMVar
+    
+    return (currentBuild, blockState, serverProcess)
+
+buildAndServe :: CommandLine -> CurrentBuild -> ServerProcess -> IO ()
 buildAndServe commandLine currentBuild serverProcess = do
     maybeTerminateProcessFromMVar currentBuild
 
@@ -79,8 +79,7 @@ blockBatchEvents blockState = do
 
 startServer :: CommandLine -> ServerProcess -> IO ()
 startServer commandLine serverProcess = do
-    newServerProcess <- spawnCommand $ serverCommand commandLine
-    putMVar serverProcess newServerProcess
+    putMVar serverProcess =<< spawnCommand (serverCommand commandLine)
 
 maybeTerminateProcessFromMVar :: MVar ProcessHandle -> IO ()
 maybeTerminateProcessFromMVar processMVar = do
