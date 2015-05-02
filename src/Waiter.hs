@@ -1,16 +1,15 @@
 module Waiter (run) where
 
-import Filesystem.Path.CurrentOS (decodeString)
-import qualified Filesystem.Path.CurrentOS as OS (FilePath, encodeString) 
+import Filesystem.Path.CurrentOS (decodeString, encodeString)
+import qualified Filesystem.Path.CurrentOS as OS (FilePath) 
 import System.Exit (ExitCode(..))
 import System.FSNotify (Event(..), withManager, watchTree, Event)
 import System.Process (waitForProcess, terminateProcess, spawnCommand)
 import System.Process.Internals (ProcessHandle(..))
-import Control.Monad (forever, unless, void)
+import Control.Monad (forever, unless)
 import Control.Concurrent.MVar
 import Control.Concurrent (threadDelay)
 import Text.Regex (mkRegex, matchRegex)
-import Data.List (delete)
 import Data.Maybe (isJust)
 
 import Waiter.Types
@@ -96,4 +95,4 @@ fileDoesMatch regex (Removed filePath _) = fileDoesMatch' regex filePath
 
 fileDoesMatch' :: String -> OS.FilePath -> Bool
 fileDoesMatch' regex filePath =
-    isJust $ matchRegex (mkRegex regex) (OS.encodeString filePath)
+    isJust $ matchRegex (mkRegex regex) (encodeString filePath)
