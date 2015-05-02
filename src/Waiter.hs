@@ -38,23 +38,15 @@ buildAndServe :: CommandLine
               -> MVar ProcessHandle
               -> IO ()
 buildAndServe commandLine currentBuild serverProcess = do
-    stopBuild currentBuild
+    maybeTerminateProcessFromMVar currentBuild
     build <- startBuild (buildCommand commandLine) currentBuild
     exitCode <- waitForProcess build
 
     case exitCode of
         ExitSuccess -> do
-            stopServer serverProcess
+            maybeTerminateProcessFromMVar serverProcess
             startServer commandLine serverProcess
         ExitFailure _ -> return ()
-
-stopBuild :: MVar ProcessHandle -> IO ()
-stopBuild currentBuild = do
-    currentBuild' <- tryTakeMVar currentBuild
-
-    case currentBuild' of
-        Just build -> void $ terminateProcess build
-        Nothing -> return ()
 
 startBuild :: String -> MVar ProcessHandle -> IO ProcessHandle
 startBuild buildCommand currentBuild = do
@@ -87,10 +79,10 @@ startServer commandLine serverProcess = do
     putMVar serverProcess newServerProcess
     return ()
 
-stopServer :: MVar ProcessHandle -> IO ()
-stopServer serverProcess = do
-    result <- tryTakeMVar serverProcess
+maybeTerminateProcessFromMVar :: MVar ProcessHandle -> IO ()
+maybeTerminateProcessFromMVar processMVar = do
+    process <- tryTakeMVar processMVar
 
-    case result of
+    case process of
         Just process -> terminateProcess process
         Nothing -> return ()
