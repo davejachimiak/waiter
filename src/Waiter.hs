@@ -1,8 +1,9 @@
 module Waiter (run) where
 
 import Filesystem.Path.CurrentOS (decodeString)
+import qualified Filesystem.Path.CurrentOS as OS (FilePath, encodeString) 
 import System.Exit (ExitCode(..))
-import System.FSNotify (withManager, watchTree, Event)
+import System.FSNotify (Event(..), withManager, watchTree, Event)
 import System.Process (waitForProcess, terminateProcess, spawnCommand)
 import System.Process.Internals (ProcessHandle(..))
 import Control.Monad (forever, unless, void)
@@ -10,6 +11,7 @@ import Control.Concurrent.MVar
 import Control.Concurrent (threadDelay)
 import Text.Regex (mkRegex, matchRegex)
 import Data.List (delete)
+import Data.Maybe (isJust)
 
 import Waiter.Types
 
@@ -34,30 +36,32 @@ run commandLine = do
         forever getLine
 
 buildAndServe :: CommandLine
-              -> MVar ProcessHandle
-              -> MVar ProcessHandle
+              -> CurrentBuild
+              -> ServerProcess
               -> IO ()
 buildAndServe commandLine currentBuild serverProcess = do
     maybeTerminateProcessFromMVar currentBuild
-    build <- startBuild (buildCommand commandLine) currentBuild
-    exitCode <- waitForProcess build
 
-    case exitCode of
-        ExitSuccess -> do
-            maybeTerminateProcessFromMVar serverProcess
-            startServer commandLine serverProcess
-        ExitFailure _ -> return ()
+    startBuild (buildCommand commandLine) currentBuild
+        >>= waitForProcess
+        >>= runServer commandLine serverProcess
 
-startBuild :: String -> MVar ProcessHandle -> IO ProcessHandle
+startBuild :: String -> CurrentBuild -> IO ProcessHandle
 startBuild buildCommand currentBuild = do
     build <- spawnCommand buildCommand
     putMVar currentBuild build
     return build
 
+runServer :: CommandLine -> ServerProcess -> ExitCode -> IO ()
+runServer commandLine serverProcess ExitSuccess = do
+    maybeTerminateProcessFromMVar serverProcess
+    startServer commandLine serverProcess
+runServer _ _ _ = return ()
+
 blockBuildAndServe :: CommandLine
-                   -> MVar Bool
-                   -> MVar ProcessHandle
-                   -> MVar ProcessHandle
+                   -> BlockState
+                   -> CurrentBuild
+                   -> ServerProcess
                    -> Event
                    -> IO ()
 blockBuildAndServe commandLine blockState currentBuild serverProcess _ = do
@@ -67,13 +71,13 @@ blockBuildAndServe commandLine blockState currentBuild serverProcess _ = do
         $ blockBatchEvents blockState
         >> buildAndServe commandLine currentBuild serverProcess
 
-blockBatchEvents :: MVar Bool -> IO Bool
+blockBatchEvents :: BlockState -> IO Bool
 blockBatchEvents blockState = do
     swapMVar blockState True
     threadDelay 100000 -- microseconds: 0.1 seconds
     swapMVar blockState False
 
-startServer :: CommandLine -> MVar ProcessHandle -> IO ()
+startServer :: CommandLine -> ServerProcess -> IO ()
 startServer commandLine serverProcess = do
     newServerProcess <- spawnCommand $ serverCommand commandLine
     putMVar serverProcess newServerProcess
@@ -86,3 +90,12 @@ maybeTerminateProcessFromMVar processMVar = do
     case process of
         Just process -> terminateProcess process
         Nothing -> return ()
+
+fileDoesMatch :: String -> Event -> Bool
+fileDoesMatch regex (Added filePath _) = fileDoesMatch' regex filePath
+fileDoesMatch regex (Modified filePath _) = fileDoesMatch' regex filePath
+fileDoesMatch regex (Removed filePath _) = fileDoesMatch' regex filePath
+
+fileDoesMatch' :: String -> OS.FilePath -> Bool
+fileDoesMatch' regex filePath =
+    isJust $ matchRegex (mkRegex regex) (OS.encodeString filePath)
