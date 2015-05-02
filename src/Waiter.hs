@@ -89,10 +89,10 @@ maybeTerminateProcessFromMVar processMVar = do
         Nothing -> return ()
 
 fileDoesMatch :: String -> Event -> Bool
-fileDoesMatch regex (Added filePath _) = fileDoesMatch' regex filePath
-fileDoesMatch regex (Modified filePath _) = fileDoesMatch' regex filePath
-fileDoesMatch regex (Removed filePath _) = fileDoesMatch' regex filePath
+fileDoesMatch regex event = 
+    isJust $ matchRegex (mkRegex regex) (eventFilepath event)
 
-fileDoesMatch' :: String -> OS.FilePath -> Bool
-fileDoesMatch' regex filePath =
-    isJust $ matchRegex (mkRegex regex) (encodeString filePath)
+eventFilepath :: Event -> String
+eventFilepath (Added filePath _) = encodeString filePath
+eventFilepath (Modified filePath _) = encodeString filePath
+eventFilepath (Removed filePath _) = encodeString filePath
