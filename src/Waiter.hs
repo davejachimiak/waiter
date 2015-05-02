@@ -5,7 +5,7 @@ import System.Exit (ExitCode(..))
 import System.FSNotify (withManager, watchTree, Event)
 import System.Process (waitForProcess, terminateProcess, spawnCommand)
 import System.Process.Internals (ProcessHandle(..))
-import Control.Monad (forever, when, unless)
+import Control.Monad (forever, unless, void)
 import Control.Concurrent.MVar
 import Control.Concurrent (threadDelay)
 import Text.Regex (mkRegex, matchRegex)
@@ -53,7 +53,7 @@ stopBuild currentBuild = do
     currentBuild' <- tryTakeMVar currentBuild
 
     case currentBuild' of
-        Just build -> terminateProcess build >> return ()
+        Just build -> void $ terminateProcess build
         Nothing -> return ()
 
 startBuild :: String -> MVar ProcessHandle -> IO ProcessHandle
