@@ -34,7 +34,7 @@ maybeTerminateProcessFromMVar processMVar = do
         Nothing -> return ()
 
 startServer :: CommandLine -> ServerProcess -> IO ()
-startServer commandLine serverProcess = do
+startServer commandLine serverProcess =
     putMVar serverProcess =<< spawnCommand (serverCommand commandLine)
 
 startBuild :: String -> CurrentBuild -> IO ProcessHandle
