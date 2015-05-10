@@ -3,7 +3,7 @@ module Waiter (run) where
 import Filesystem.Path.CurrentOS (decodeString, encodeString)
 import qualified Filesystem.Path.CurrentOS as OS (FilePath) 
 import System.FSNotify (Event(..), withManager, watchTree)
-import Control.Monad (forever, unless)
+import Control.Monad (forever)
 import Control.Concurrent.MVar (newEmptyMVar)
 import Control.Concurrent (threadDelay)
 import Text.Regex (mkRegex, matchRegex)
