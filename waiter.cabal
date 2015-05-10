@@ -1,5 +1,5 @@
 name: waiter
-version: 0.1.0.1
+version: 0.1.0.2
 synopsis: Run and rebuild a server on file changes for compiled languages.
 license: MIT
 license-file: LICENSE
